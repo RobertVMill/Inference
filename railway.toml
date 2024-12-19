@@ -1,0 +1,16 @@
+[build]
+builder = "nixpacks"
+buildCommand = "pip install -r requirements.txt"
+
+[deploy]
+startCommand = "uvicorn app:app --host 0.0.0.0 --port $PORT"
+healthcheckPath = "/api/financial-metrics"
+healthcheckTimeout = 100
+restartPolicyType = "on_failure"
+
+[service]
+name = "inference-backend"
+rootDir = "backend"
+
+[env]
+PYTHON_VERSION = "3.11.0"
