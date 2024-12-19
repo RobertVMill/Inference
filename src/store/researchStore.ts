@@ -4,6 +4,8 @@ interface Document {
   title: string;
   content: string;
   type: 'transcript' | 'article';
+  url?: string;
+  date?: string;
 }
 
 interface Summary {

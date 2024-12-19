@@ -25,8 +25,8 @@ export function ReportGenerator() {
         },
         body: JSON.stringify({
           document_content: document.content,
-          document_url: document.url,
-          document_date: document.date,
+          document_url: document.url || '',
+          document_date: document.date || '',
         }),
       });
 
