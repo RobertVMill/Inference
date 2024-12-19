@@ -2,14 +2,14 @@
 
 import { useEffect, useState } from 'react';
 import { supabase, Report } from '@/lib/supabase';
-import { createClient } from '@supabase/supabase-js';
+import { createClient, SupabaseClient } from '@supabase/supabase-js';
 
 export function Reports() {
   const [reports, setReports] = useState<Report[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [selectedReport, setSelectedReport] = useState<Report | null>(null);
-  const [supabaseClient, setSupabaseClient] = useState(supabase);
+  const [supabaseClient, setSupabaseClient] = useState<SupabaseClient | null>(supabase);
 
   useEffect(() => {
     // Initialize Supabase client on the client side if it's null

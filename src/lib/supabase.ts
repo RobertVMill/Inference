@@ -1,6 +1,6 @@
-import { createClient } from '@supabase/supabase-js';
+import { createClient, SupabaseClient } from '@supabase/supabase-js';
 
-let supabase;
+let supabase: SupabaseClient | null = null;
 
 try {
   const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL;
