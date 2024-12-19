@@ -52,8 +52,8 @@ export function FinancialMetrics() {
         throw new Error('Failed to fetch metrics');
       }
       
-      const data = await response.json();
-      setMetrics(data);
+      const result = await response.json();
+      setMetrics(result.data || []);
       setLoading(false);
       setLastFetchTime(now);
     } catch (err) {

@@ -23,13 +23,15 @@ app.add_middleware(
     CORSMiddleware,
     allow_origins=[
         "http://localhost:3000",  # Local development
-        "https://inference-ai.vercel.app",  # Production (update this with your Vercel domain)
+        "https://inference-ai.vercel.app",  # Production
         "https://inference-git-main-robertvmill.vercel.app",  # Preview deployments
-        "https://inference-robertvmill.vercel.app"  # Preview deployments
+        "https://inference-robertvmill.vercel.app",  # Preview deployments
+        "*"  # Allow all origins temporarily for debugging
     ],
     allow_credentials=True,
-    allow_methods=["*"],
+    allow_methods=["GET", "POST", "PUT", "DELETE", "OPTIONS"],
     allow_headers=["*"],
+    max_age=3600,  # Cache preflight requests for 1 hour
 )
 
 # Initialize OpenAI client
@@ -146,7 +148,12 @@ async def get_financial_metrics():
         if (financial_metrics_cache["data"] is not None and 
             financial_metrics_cache["last_updated"] is not None and 
             (current_time - financial_metrics_cache["last_updated"]).seconds < 300):
-            return financial_metrics_cache["data"]
+            # Return cached data with caching headers
+            return {
+                "data": financial_metrics_cache["data"],
+                "cache_control": "public, max-age=300",  # Cache for 5 minutes
+                "last_modified": financial_metrics_cache["last_updated"].isoformat()
+            }
 
         print("Fetching fresh financial metrics...")
         metrics = []
@@ -162,6 +169,7 @@ async def get_financial_metrics():
                     "marketCap": info.market_cap if hasattr(info, 'market_cap') else 0,
                     "volume": info.regular_market_volume if hasattr(info, 'regular_market_volume') else 0
                 })
+                print(f"Successfully fetched data for {company['name']}")
             except Exception as e:
                 print(f"Error fetching data for {company['name']}: {e}")
                 metrics.append({
@@ -177,12 +185,21 @@ async def get_financial_metrics():
         financial_metrics_cache["data"] = metrics
         financial_metrics_cache["last_updated"] = current_time
         
-        return metrics
+        # Return fresh data with caching headers
+        return {
+            "data": metrics,
+            "cache_control": "public, max-age=300",  # Cache for 5 minutes
+            "last_modified": current_time.isoformat()
+        }
     except Exception as e:
         print(f"Error in get_financial_metrics: {e}")
         # If there's an error but we have cached data, return it
         if financial_metrics_cache["data"] is not None:
-            return financial_metrics_cache["data"]
+            return {
+                "data": financial_metrics_cache["data"],
+                "cache_control": "public, max-age=300",
+                "last_modified": financial_metrics_cache["last_updated"].isoformat() if financial_metrics_cache["last_updated"] else current_time.isoformat()
+            }
         raise HTTPException(status_code=500, detail=str(e))
 
 class Document(BaseModel):
