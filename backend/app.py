@@ -21,7 +21,12 @@ app = FastAPI()
 # Configure CORS
 app.add_middleware(
     CORSMiddleware,
-    allow_origins=["http://localhost:3000"],
+    allow_origins=[
+        "http://localhost:3000",  # Local development
+        "https://inference-ai.vercel.app",  # Production (update this with your Vercel domain)
+        "https://inference-git-main-robertvmill.vercel.app",  # Preview deployments
+        "https://inference-robertvmill.vercel.app"  # Preview deployments
+    ],
     allow_credentials=True,
     allow_methods=["*"],
     allow_headers=["*"],

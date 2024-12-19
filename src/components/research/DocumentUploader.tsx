@@ -4,6 +4,8 @@ import { useState } from 'react';
 import { useResearchStore } from '@/store/researchStore';
 import { motion } from 'framer-motion';
 
+const BACKEND_URL = process.env.NEXT_PUBLIC_BACKEND_URL || 'http://localhost:8001';
+
 const fadeIn = {
   hidden: { opacity: 0, y: 20 },
   show: { opacity: 1, y: 0 }
@@ -42,7 +44,7 @@ export function DocumentUploader() {
       setAnalysisStatus('Starting analysis...');
       setDocument(doc);
       
-      const response = await fetch('http://localhost:8001/api/research/upload', {
+      const response = await fetch(`${BACKEND_URL}/api/research/upload`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify(doc),

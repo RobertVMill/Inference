@@ -3,6 +3,8 @@
 import { useState, useEffect } from 'react';
 import { motion } from 'framer-motion';
 
+const BACKEND_URL = process.env.NEXT_PUBLIC_BACKEND_URL || 'http://localhost:8001';
+
 interface Metric {
   symbol: string;
   name: string;
@@ -42,7 +44,7 @@ export function FinancialMetrics() {
         if (!isMounted) return;
         
         setError(null);
-        const response = await fetch('http://localhost:8001/api/financial-metrics');
+        const response = await fetch(`${BACKEND_URL}/api/financial-metrics`);
         
         if (!response.ok) {
           throw new Error('Failed to fetch metrics');
