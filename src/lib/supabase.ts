@@ -1,23 +1,41 @@
 import { createClient } from '@supabase/supabase-js';
 
-const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL;
-const supabaseAnonKey = process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY;
+let supabase;
 
-if (!supabaseUrl) {
-  throw new Error('Missing env.NEXT_PUBLIC_SUPABASE_URL');
-}
-if (!supabaseAnonKey) {
-  throw new Error('Missing env.NEXT_PUBLIC_SUPABASE_ANON_KEY');
-}
-
-// Validate URL format
 try {
-  new URL(supabaseUrl);
+  const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL;
+  const supabaseAnonKey = process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY;
+
+  if (!supabaseUrl) {
+    throw new Error('Missing env.NEXT_PUBLIC_SUPABASE_URL');
+  }
+  if (!supabaseAnonKey) {
+    throw new Error('Missing env.NEXT_PUBLIC_SUPABASE_ANON_KEY');
+  }
+
+  // Validate URL format
+  if (typeof window !== 'undefined') {
+    try {
+      new URL(supabaseUrl);
+    } catch (error) {
+      console.error('Invalid NEXT_PUBLIC_SUPABASE_URL format:', error);
+      throw new Error('Invalid NEXT_PUBLIC_SUPABASE_URL format');
+    }
+  }
+
+  supabase = createClient(supabaseUrl, supabaseAnonKey, {
+    auth: {
+      persistSession: true,
+      autoRefreshToken: true,
+    },
+  });
 } catch (error) {
-  throw new Error('Invalid NEXT_PUBLIC_SUPABASE_URL format');
+  console.error('Error initializing Supabase client:', error);
+  // Provide a fallback client that will be replaced on the client side
+  supabase = null;
 }
 
-export const supabase = createClient(supabaseUrl, supabaseAnonKey);
+export { supabase };
 
 export interface Report {
   id: string;

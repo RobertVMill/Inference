@@ -2,26 +2,55 @@
 
 import { useEffect, useState } from 'react';
 import { supabase, Report } from '@/lib/supabase';
+import { createClient } from '@supabase/supabase-js';
 
 export function Reports() {
   const [reports, setReports] = useState<Report[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [selectedReport, setSelectedReport] = useState<Report | null>(null);
+  const [supabaseClient, setSupabaseClient] = useState(supabase);
 
   useEffect(() => {
-    fetchReports();
-  }, []);
+    // Initialize Supabase client on the client side if it's null
+    if (!supabaseClient && typeof window !== 'undefined') {
+      const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL;
+      const supabaseAnonKey = process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY;
+
+      if (supabaseUrl && supabaseAnonKey) {
+        try {
+          const client = createClient(supabaseUrl, supabaseAnonKey, {
+            auth: {
+              persistSession: true,
+              autoRefreshToken: true,
+            },
+          });
+          setSupabaseClient(client);
+        } catch (err) {
+          console.error('Error initializing Supabase client:', err);
+          setError('Failed to initialize database connection');
+        }
+      }
+    }
+  }, [supabaseClient]);
+
+  useEffect(() => {
+    if (supabaseClient) {
+      fetchReports();
+    }
+  }, [supabaseClient]);
 
   const fetchReports = async () => {
+    if (!supabaseClient) return;
+
     try {
       setLoading(true);
-      const { data, error } = await supabase
+      const { data, error: fetchError } = await supabaseClient
         .from('reports')
         .select('*')
         .order('created_at', { ascending: false });
 
-      if (error) throw error;
+      if (fetchError) throw fetchError;
       setReports(data || []);
     } catch (err) {
       console.error('Error fetching reports:', err);
