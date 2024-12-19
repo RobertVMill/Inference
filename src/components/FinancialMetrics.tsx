@@ -1,6 +1,6 @@
 'use client';
 
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useCallback } from 'react';
 import { motion } from 'framer-motion';
 
 const BACKEND_URL = process.env.NEXT_PUBLIC_BACKEND_URL || 'http://localhost:8001';
@@ -35,45 +35,40 @@ export function FinancialMetrics() {
   const [error, setError] = useState<string | null>(null);
   const [retryCount, setRetryCount] = useState(0);
 
+  const fetchMetrics = useCallback(async () => {
+    try {
+      setError(null);
+      const response = await fetch(`${BACKEND_URL}/api/financial-metrics`);
+      
+      if (!response.ok) {
+        throw new Error('Failed to fetch metrics');
+      }
+      
+      const data = await response.json();
+      setMetrics(data);
+      setLoading(false);
+    } catch (err) {
+      console.error('Error fetching metrics:', err);
+      setError(err instanceof Error ? err.message : 'Failed to load financial metrics');
+      
+      if (retryCount < 3) {
+        const retryDelay = Math.pow(2, retryCount) * 1000;
+        setTimeout(() => {
+          setRetryCount(prev => prev + 1);
+        }, retryDelay);
+      }
+    }
+  }, [retryCount]);
+
   useEffect(() => {
     let isMounted = true;
-    let retryTimeout: NodeJS.Timeout;
 
-    const fetchMetrics = async () => {
-      try {
-        if (!isMounted) return;
-        
-        setError(null);
-        const response = await fetch(`${BACKEND_URL}/api/financial-metrics`);
-        
-        if (!response.ok) {
-          throw new Error('Failed to fetch metrics');
-        }
-        
-        const data = await response.json();
-        
-        if (!isMounted) return;
-        setMetrics(data);
-        setLoading(false);
-      } catch (err) {
-        if (!isMounted) return;
-        
-        console.error('Error fetching metrics:', err);
-        setError(err instanceof Error ? err.message : 'Failed to load financial metrics');
-        
-        if (retryCount < 3) {
-          const retryDelay = Math.pow(2, retryCount) * 1000;
-          retryTimeout = setTimeout(() => {
-            setRetryCount(prev => prev + 1);
-          }, retryDelay);
-        }
-      }
-    };
-
-    fetchMetrics();
+    if (isMounted) {
+      fetchMetrics();
+    }
 
     const interval = setInterval(() => {
-      if (!error) {
+      if (!error && isMounted) {
         fetchMetrics();
       }
     }, 5 * 60 * 1000);
@@ -81,9 +76,8 @@ export function FinancialMetrics() {
     return () => {
       isMounted = false;
       clearInterval(interval);
-      if (retryTimeout) clearTimeout(retryTimeout);
     };
-  }, [retryCount]);
+  }, [fetchMetrics, error]);
 
   if (loading && metrics.length === 0) {
     return (

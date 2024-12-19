@@ -3,87 +3,74 @@
 import { useState } from 'react';
 import { useResearchStore } from '@/store/researchStore';
 
+const BACKEND_URL = process.env.NEXT_PUBLIC_BACKEND_URL || 'http://localhost:8001';
+
 export function ReportGenerator() {
-  const { document, summary, qaHistory } = useResearchStore();
-  const [loading, setLoading] = useState(false);
+  const { document } = useResearchStore();
+  const [report, setReport] = useState('');
+  const [isLoading, setIsLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
-  const handleGenerateReport = async () => {
-    if (!document || !summary) return;
+  const generateReport = async () => {
+    if (!document?.content) return;
 
-    setLoading(true);
+    setIsLoading(true);
     setError(null);
 
     try {
-      const response = await fetch('http://localhost:8001/api/research/generate-report', {
+      const response = await fetch(`${BACKEND_URL}/api/research/generate-report`, {
         method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
+        headers: {
+          'Content-Type': 'application/json',
+        },
         body: JSON.stringify({
-          title: document.title,
-          content: document.content,
-          type: document.type,
-          url: document.url,
-          date: document.date
+          document_content: document.content,
+          document_url: document.url,
+          document_date: document.date,
         }),
       });
 
-      if (!response.ok) throw new Error('Failed to generate report');
-      
-      const data = await response.json();
-      
-      // Navigate to the Reports tab to view the saved report
-      window.location.hash = '#reports';
-    } catch (error) {
-      console.error('Error generating report:', error);
-      setError('Failed to generate report. Please try again.');
+      if (!response.ok) {
+        throw new Error('Failed to generate report');
+      }
+
+      const result = await response.json();
+      setReport(result.report);
+    } catch (err) {
+      setError(err instanceof Error ? err.message : 'Failed to generate report');
     } finally {
-      setLoading(false);
+      setIsLoading(false);
     }
   };
 
-  if (!document || !summary) return null;
+  if (!document) return null;
 
   return (
     <div className="space-y-6">
-      <div className="border-b pb-4">
-        <h2 className="text-2xl font-bold mb-2">Generate Report</h2>
-        <p className="text-gray-600">Create a comprehensive report based on the analysis</p>
-      </div>
+      <button
+        onClick={generateReport}
+        disabled={isLoading}
+        className="w-full p-3 bg-white/10 hover:bg-white/20 disabled:bg-white/5 disabled:cursor-not-allowed border border-white/10 backdrop-blur-sm rounded-lg text-white font-medium transition-all"
+      >
+        {isLoading ? 'Generating Report...' : 'Generate Executive Report'}
+      </button>
 
-      <div className="space-y-4">
-        <div className="p-4 bg-gray-50 dark:bg-gray-800 rounded-lg">
-          <h3 className="font-semibold mb-2">Report Contents</h3>
-          <ul className="list-disc list-inside space-y-1 text-gray-600 dark:text-gray-300">
-            <li>Document Summary</li>
-            <li>Key Points Analysis</li>
-            <li>Entity Analysis</li>
-            <li>Q&A Session Summary</li>
-            <li>Recommendations & Insights</li>
-          </ul>
+      {error && (
+        <div className="p-4 bg-red-500/20 border border-red-500/20 rounded-lg text-red-400">
+          {error}
         </div>
+      )}
 
-        {error && (
-          <div className="text-red-500 text-sm">{error}</div>
-        )}
-
-        <button
-          onClick={handleGenerateReport}
-          disabled={loading}
-          className="w-full px-6 py-3 bg-green-600 text-white rounded-lg hover:bg-green-700 disabled:opacity-50 flex items-center justify-center"
-        >
-          {loading ? (
-            <>
-              <svg className="animate-spin -ml-1 mr-3 h-5 w-5 text-white" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
-                <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4"></circle>
-                <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
-              </svg>
-              Generating Report...
-            </>
-          ) : (
-            'Generate Report'
-          )}
-        </button>
-      </div>
+      {report && (
+        <div className="p-4 bg-white/5 border border-white/10 backdrop-blur-sm rounded-lg">
+          <h3 className="font-medium mb-4">Executive Report</h3>
+          <div className="prose prose-invert max-w-none">
+            {report.split('\n').map((paragraph, i) => (
+              <p key={i} className="mb-4 last:mb-0">{paragraph}</p>
+            ))}
+          </div>
+        </div>
+      )}
     </div>
   );
 } 
