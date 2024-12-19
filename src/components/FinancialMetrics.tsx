@@ -4,6 +4,7 @@ import { useState, useEffect, useCallback } from 'react';
 import { motion } from 'framer-motion';
 
 const BACKEND_URL = process.env.NEXT_PUBLIC_BACKEND_URL || 'http://localhost:8001';
+const POLLING_INTERVAL = 5 * 60 * 1000; // 5 minutes in milliseconds
 
 interface Metric {
   symbol: string;
@@ -34,8 +35,15 @@ export function FinancialMetrics() {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [retryCount, setRetryCount] = useState(0);
+  const [lastFetchTime, setLastFetchTime] = useState(0);
 
-  const fetchMetrics = useCallback(async () => {
+  const fetchMetrics = useCallback(async (force = false) => {
+    // Check if enough time has passed since last fetch
+    const now = Date.now();
+    if (!force && now - lastFetchTime < POLLING_INTERVAL) {
+      return;
+    }
+
     try {
       setError(null);
       const response = await fetch(`${BACKEND_URL}/api/financial-metrics`);
@@ -47,6 +55,7 @@ export function FinancialMetrics() {
       const data = await response.json();
       setMetrics(data);
       setLoading(false);
+      setLastFetchTime(now);
     } catch (err) {
       console.error('Error fetching metrics:', err);
       setError(err instanceof Error ? err.message : 'Failed to load financial metrics');
@@ -58,24 +67,32 @@ export function FinancialMetrics() {
         }, retryDelay);
       }
     }
-  }, [retryCount]);
+  }, [retryCount, lastFetchTime]);
 
   useEffect(() => {
     let isMounted = true;
+    let intervalId: NodeJS.Timeout;
 
-    if (isMounted) {
-      fetchMetrics();
-    }
-
-    const interval = setInterval(() => {
-      if (!error && isMounted) {
-        fetchMetrics();
+    const initFetch = async () => {
+      if (isMounted) {
+        await fetchMetrics(true); // Force initial fetch
       }
-    }, 5 * 60 * 1000);
+    };
+
+    initFetch();
+
+    // Only set up polling if component is mounted and no errors
+    if (!error && isMounted) {
+      intervalId = setInterval(() => {
+        fetchMetrics();
+      }, POLLING_INTERVAL);
+    }
 
     return () => {
       isMounted = false;
-      clearInterval(interval);
+      if (intervalId) {
+        clearInterval(intervalId);
+      }
     };
   }, [fetchMetrics, error]);
 
