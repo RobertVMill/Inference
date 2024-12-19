@@ -10,10 +10,12 @@ export function Reports() {
   const [error, setError] = useState<string | null>(null);
   const [selectedReport, setSelectedReport] = useState<Report | null>(null);
   const [supabaseClient, setSupabaseClient] = useState<SupabaseClient | null>(supabase);
+  const [isInitializing, setIsInitializing] = useState(!supabase);
 
   useEffect(() => {
     // Initialize Supabase client on the client side if it's null
     if (!supabaseClient && typeof window !== 'undefined') {
+      setIsInitializing(true);
       const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL;
       const supabaseAnonKey = process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY;
 
@@ -29,16 +31,21 @@ export function Reports() {
         } catch (err) {
           console.error('Error initializing Supabase client:', err);
           setError('Failed to initialize database connection');
+        } finally {
+          setIsInitializing(false);
         }
+      } else {
+        setIsInitializing(false);
+        setError('Missing database configuration');
       }
     }
   }, [supabaseClient]);
 
   useEffect(() => {
-    if (supabaseClient) {
+    if (supabaseClient && !isInitializing) {
       fetchReports();
     }
-  }, [supabaseClient]);
+  }, [supabaseClient, isInitializing]);
 
   const fetchReports = async () => {
     if (!supabaseClient) return;
@@ -60,7 +67,7 @@ export function Reports() {
     }
   };
 
-  if (loading) {
+  if (isInitializing || (loading && reports.length === 0)) {
     return (
       <div className="flex items-center justify-center min-h-[200px]">
         <div className="flex items-center space-x-2">
@@ -68,7 +75,9 @@ export function Reports() {
             <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4"></circle>
             <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
           </svg>
-          <span className="text-gray-600 dark:text-gray-400">Loading reports...</span>
+          <span className="text-gray-600 dark:text-gray-400">
+            {isInitializing ? 'Connecting to database...' : 'Loading reports...'}
+          </span>
         </div>
       </div>
     );
